@@ -1,4 +1,4 @@
-use bevy::{prelude::*, input::mouse::MouseMotion, ecs::system::lifetimeless::SRes, render::{renderer::RenderDevice, render_resource::{BindGroupLayout, BindGroup, BindGroupDescriptor, BindGroupLayoutDescriptor, ShaderStages, TextureViewDimension, TextureSampleType, BindingType, BindGroupLayoutEntry, SamplerBindingType, BindGroupEntry}, render_asset::{RenderAsset, RenderAssets, PrepareAssetError}, mesh::Indices, camera::{Camera3d, ActiveCamera}}, reflect::TypeUuid, pbr::MaterialPipeline};
+use bevy::{prelude::*, input::mouse::MouseMotion, render::{camera::{Camera3d}}};
 
 mod skybox;
 
@@ -14,12 +14,12 @@ fn main() {
         .add_system(mouse_motion)
         .add_system(orbit_camera_startup)
         .add_system(camera_switch)
-        .add_system(ball_movement)
+        .add_system_to_stage(CoreStage::PreUpdate, ball_movement)
+        .add_system_to_stage(CoreStage::PostUpdate, physiscs_update)
         .run();
     
 
 }
-
 
 
 
@@ -74,6 +74,15 @@ fn startup_system(
         ..default()
     }));
 
+    let box_handle = meshes.add(Mesh::from(shape::Box{
+        max_x: 0.5,
+        max_y: 1.0,
+        max_z: 1.0,
+        min_x:-0.5,
+        min_y: 0.0,
+        min_z:-1.0,
+    }));
+
     // parent cube
     commands
         .spawn_bundle(PbrBundle {
@@ -88,16 +97,45 @@ fn startup_system(
             // child cube 
             parent.spawn_bundle(PbrBundle {
                     mesh: ball_handle,
-                    material: cube_material_handle,
+                    material: cube_material_handle.clone(),
                     transform: Transform::from_xyz(0.0, 0.5, 0.0),
                     ..default()
                 })
                 .insert_bundle(bevy_mod_picking::PickableBundle::default())
-                .insert(BallComponent{
-                    speed: Vec2::ZERO,
-                    max_speed: Vec2::new(2.0, 2.0),
+                .insert(BallComponent)
+                .insert(PhysicsObject {
                     acc: Vec2::ZERO,
-                    max_acc: Vec2::new(2.0, 2.0),
+                    max_acc: Vec2::new(1.0, 1.0),
+                    speed: Vec2::ZERO,
+                    colider: Colider::CircleColider(0.5)
+                });
+            
+            parent.spawn_bundle(PbrBundle {
+                    mesh: box_handle.clone(),
+                    material: cube_material_handle.clone(),
+                    transform: Transform::from_xyz(-2.0, 0.0, 0.0),
+                    ..default()
+                })
+                .insert_bundle(bevy_mod_picking::PickableBundle::default())
+                .insert(PhysicsObject {
+                    acc: Vec2::ZERO,
+                    max_acc: Vec2::ZERO,
+                    speed: Vec2::ZERO,
+                    colider: Colider::BoxColider(1.0, 2.0)
+                });
+
+            parent.spawn_bundle(PbrBundle {
+                    mesh: box_handle,
+                    material: cube_material_handle.clone(),
+                    transform: Transform::from_xyz(4.0, 0.0, 0.0),
+                    ..default()
+                })
+                .insert_bundle(bevy_mod_picking::PickableBundle::default())
+                .insert(PhysicsObject {
+                    acc: Vec2::ZERO,
+                    max_acc: Vec2::ZERO,
+                    speed: Vec2::ZERO,
+                    colider: Colider::BoxColider(1.0, 2.0)
                 });
         });
     
@@ -152,7 +190,7 @@ fn camera_switch(
 
 // ARENA
 const ARENA_MAX_ANGLE: f32 = 3.14/6.0;
-const ARENA_ANG_MOMENTUM: f32 = 1.0;
+const ARENA_ANG_MOMENTUM: f32 = 0.8;
 fn system(
     _commands: Commands,
     time: Res<Time>,
@@ -220,25 +258,20 @@ fn move_orbit_camera(
 
 // Ball movement
 #[derive(Component)]
-struct BallComponent {
-    speed: Vec2,
-    max_speed: Vec2,
-    acc: Vec2,
-    max_acc: Vec2,
-}
+struct BallComponent;
 
 
 const SPEED_DAMP:f32 = 1.0;
 fn ball_movement(
     mut commands: Commands,
     time: Res<Time>,
-    mut ball_query: Query<(Entity, &mut Transform, &mut BallComponent)>,
+    mut ball_query: Query<(Entity, &mut Transform, &mut BallComponent, &mut PhysicsObject)>,
     arena_query: Query<&Rotator>,
 ) {
     let arena = arena_query.single();
 
     ball_query.for_each_mut(|ball_query_res| {
-        let (ball_entity, mut ball_transform, mut ball_component) = ball_query_res;
+        let (ball_entity, mut ball_transform, _, mut ball_component) = ball_query_res;
 
         let new_position = Vec2::new(ball_transform.translation.x, ball_transform.translation.z) + ball_component.speed * time.delta_seconds();
         
@@ -261,17 +294,101 @@ fn ball_movement(
 }
 
 // OBSTACLE
+#[derive(Clone, Debug)]
+enum Colider {
+    BoxColider(f32, f32),
+    CircleColider(f32),
+}
 
-// #[derive(Bundle, Default)]
-// struct ObstacleBundle {
-//     object: PbrBundle,
-//     colider: BoxColider,
+
+#[derive(Component, Debug)]
+struct PhysicsObject {
+    speed: Vec2,
+    acc: Vec2,
+    max_acc: Vec2,
+    colider: Colider,
+}
+
+
+
+fn physiscs_update(
+    mut physics_obj_query: Query<(Entity, &mut Transform, &mut PhysicsObject)>,
+) {
+    let mut iterator = physics_obj_query.iter_combinations_mut::<2>();
+    while let Some(mut arr) = iterator.fetch_next()  {
+        let (l, m) = arr.split_at_mut(1);
+        if let Some(a) = l.get_mut(0) {
+            //(_ent_a, mut tr_a, mut po_a)
+            if let Some(b) = m.get_mut(0) {
+                //(_ent_b, mut tr_b, mut po_b)
+                //print!("{:?} ", a.2);
+                let tr_a: &mut Transform = &mut a.1;
+                let po_a: &mut PhysicsObject = &mut a.2;
+                let tr_b: &mut Transform = &mut b.1;
+                let po_b: &mut PhysicsObject = &mut b.2;
+                resolve_colission(tr_a, po_a, tr_b, po_b);
+                //println!("{:?} ", a.2);
+            }
+        }
+    }
+}
+
+fn resolve_colission(tr_a: &mut Transform, po_a: &mut PhysicsObject, tr_b: &mut Transform, po_b: &mut PhysicsObject) {
+    match (po_a.colider.clone(), po_b.colider.clone()) {
+        (Colider::BoxColider(_w_a, _h_a), Colider::BoxColider(_w_b, _h_b)) => {
+            // box vs box
+            
+        },
+        (Colider::BoxColider(_w, _h), Colider::CircleColider(_r)) => {
+
+        },
+        (Colider::CircleColider(r_a), Colider::BoxColider(w_b, h_b)) => {
+            // box vs circle
+            let diff = Vec2::new(
+                (-w_b/2.0).max((w_b/2.0).min(tr_a.translation.x - tr_b.translation.x)),
+                (-h_b/2.0).max((h_b/2.0).min(tr_a.translation.z - tr_b.translation.z))
+            );
+            let u = Vec2::new(tr_a.translation.x, tr_a.translation.z) - Vec2::new(tr_b.translation.x, tr_b.translation.z) - diff;
+            if u.length() < r_a {
+                let norm = u.normalize();
+                //println!("{:?} {:?}", u, norm);
+                let res = 2.0 * (r_a - u.length()) * norm;
+                
+                tr_a.translation.x += res.x;
+                tr_a.translation.z += res.y;
+
+                po_a.speed = po_a.speed + 2.0 * (po_a.speed.dot(-norm)) * norm;
+                //po_a.speed = Vec2::new(if u.x == 0.0 {1.0} else {-2.0} * po_a.speed.x, if u.y == 0.0 {1.0} else {-2.0} * po_a.speed.y);
+            }
+            
+        },
+        (Colider::CircleColider(_r_a), Colider::CircleColider(_r_b)) => {
+            // circle vs circle
+
+        },
+    }
+}
+
+
+// physics_update general
+// fn physiscs_update(
+//     mut physics_obj_query: Query<(Entity, &mut Transform, &mut PhysicsObject)>,
+// ) {
+//     let mut iterator = physics_obj_query.iter_combinations_mut::<2>();
+//     while let Some(mut arr) = iterator.fetch_next()  {
+//         let (l, m) = arr.split_at_mut(1);
+//         if let Some(a) = l.get_mut(0) {
+//             //(_ent_a, mut tr_a, mut po_a)
+//             if let Some(b) = m.get_mut(0) {
+//                 //(_ent_b, mut tr_b, mut po_b)
+//                 //print!("{:?} ", a.2);
+//                 let tr_a: &mut Transform = &mut a.1;
+//                 let po_a: &mut PhysicsObject = &mut a.2;
+//                 let tr_b: &mut Transform = &mut b.1;
+//                 let po_b: &mut PhysicsObject = &mut b.2;
+//                 resolve_colission(tr_a, po_a, tr_b, po_b);
+//                 //println!("{:?} ", a.2);
+//             }
+//         }
+//     }
 // }
-
-// impl ObstacleBundle {
-    
-// }
-
-// #[derive(Component)]
-// struct BoxColider;
-
