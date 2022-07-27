@@ -37,14 +37,15 @@ struct VertexOutput {
 [[stage(vertex)]]
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
+
     let mod_view = mat4x4<f32>(
         vec4<f32>(view.inverse_view[0].xyz, 0.0),
         vec4<f32>(view.inverse_view[1].xyz, 0.0),
         vec4<f32>(view.inverse_view[2].xyz, 0.0),
         vec4<f32>(0.0, 0.0, 0.0, 1.0)
     );
-
-    out.clip_position = view.projection * mod_view *  vec4<f32>(vertex.position, 1.0);  
+    let out_normal = view.view_proj * vec4<f32>(vertex.position, 1.0);
+    out.clip_position = view.projection * mod_view *  vec4<f32>(vertex.position, 1.0);
     //out.clip_position = vec4<f32>((view.view_proj * vec4<f32>(vertex.position, 1.0)).xyz + view.world_position, 1.0);
     out.clip_position = vec4<f32>(out.clip_position.x, out.clip_position.y, 0.0000000000000001, out.clip_position.w);
     out.uv = vertex.uv;

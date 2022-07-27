@@ -12,9 +12,6 @@ impl Plugin for SkyboxPlugin {
 }
 
 
-
-
-
 #[derive(TypeUuid, Clone)]
 #[uuid = "c7df202e-8e36-4a43-b195-e17bba95ed93"]
 pub struct SkyboxMaterial {
