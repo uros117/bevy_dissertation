@@ -437,7 +437,7 @@ fn camera_switch(
     _commands: Commands,
     keyboard: Res<Input<KeyCode>>,
     mut active_cameras: ResMut<bevy::render::camera::ActiveCamera<Camera3d>>,
-    ortho_camera_query: Query<(Entity, &OrthographicProjection, &Camera)>,
+    ortho_camera_query: Query<(Entity, &OrthographicProjection, &Camera, With<TopDownCamera>)>,
     persp_camera_query: Query<(Entity, &PerspectiveProjection, &Camera)>,
 ) {
     if keyboard.just_pressed(KeyCode::C) {
