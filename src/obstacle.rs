@@ -2,6 +2,9 @@ use bevy::prelude::*;
 use crate::physics::*;
 use crate::ball::*;
 
+use super::GameState;
+
+const OBSTACLE_BOUNCE: f32 = 0.2;
 
 #[derive(Component)]
 pub struct ObstacleComponent;
@@ -19,7 +22,7 @@ pub struct ObstaclePlugin;
 impl Plugin for ObstaclePlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system_to_stage(CoreStage::PostUpdate, obstacle_system);
+            .add_system_set(SystemSet::on_update(GameState::Running).with_system(obstacle_system));
     }
 }
 
@@ -56,7 +59,7 @@ fn resolve_colission(tr_a: &mut Transform, po_a: &mut PhysicsObject, tr_b: &mut 
                     tr_a.translation.x += res.x;
                     tr_a.translation.z += res.y;
 
-                    po_a.speed = po_a.speed + 2.0 * (po_a.speed.dot(-norm)) * norm;
+                    po_a.speed = po_a.speed + (1.0 + OBSTACLE_BOUNCE) * (po_a.speed.dot(-norm)) * norm;
                 }
             },
             Colider::CircleColider(_hole_r) => {

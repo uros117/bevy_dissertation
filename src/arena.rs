@@ -1,9 +1,11 @@
 use bevy::{prelude::*, asset::Assets , reflect::TypeUuid};
 
+use super::GameState;
 pub struct ArenaPlugin;
 
 pub const ARENA_MAX_ANGLE: f32 = 3.14/6.0;
 pub const ARENA_ANG_MOMENTUM: f32 = 0.8;
+pub const ARENA_SIZE: f32 = 12.0;
 
 #[derive(Bundle)]
 pub struct ArenaBundle {
@@ -15,7 +17,7 @@ pub struct ArenaBundle {
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system(system)
+            .add_system_set(SystemSet::on_update(GameState::Running).with_system(system))
             .add_asset::<ArenaAssets>()
             .init_resource::<ArenaAssets>();
     }
@@ -24,22 +26,25 @@ impl Plugin for ArenaPlugin {
 #[derive(TypeUuid)]
 #[uuid = "9e062dfb-8484-415c-86e0-28cd451874d8"]
 pub struct ArenaAssets {
-    pub mesh: Handle<Mesh>
+    pub mesh: Handle<Mesh>,
+    pub tex: Handle<Image>,
 }
 
 impl FromWorld for ArenaAssets {
     fn from_world(world: &mut World) -> Self {
         let arena_mesh_handle = world.resource_mut::<Assets<Mesh>>().add(
             Mesh::from(shape::Box {
-                max_x: 5.0,
+                max_x: ARENA_SIZE / 2.0,
                 max_y: 0.0,
-                max_z: 5.0,
-                min_x:-5.0,
+                max_z: ARENA_SIZE / 2.0,
+                min_x:-ARENA_SIZE / 2.0,
                 min_y:-0.5,
-                min_z:-5.0,
+                min_z:-ARENA_SIZE / 2.0,
             }));
-            
-        ArenaAssets { mesh: arena_mesh_handle }
+
+        let tex_handle = world.resource::<AssetServer>().load("wood.png");
+        
+        ArenaAssets { mesh: arena_mesh_handle, tex: tex_handle }
     }
 }
 

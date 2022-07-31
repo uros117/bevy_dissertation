@@ -1,13 +1,38 @@
 use bevy::prelude::*;
-use bevy::app::AppExit;
+use bevy::reflect::TypeUuid;
+
+use super::GameState;
 
 use crate::physics::*;
 use crate::ball::*;
 
 #[derive(Component)]
 pub struct HoleComponent {
-    is_final: bool,
+    pub is_final: bool,
 } 
+
+#[derive(TypeUuid)]
+#[uuid = "ad0913f1-1770-45f2-ab88-cfbcb9ae67f5"]
+pub struct HoleAssets {
+    pub mesh: Handle<Mesh>,
+    pub tex: Handle<Image>,
+    pub final_tex: Handle<Image>,
+}
+
+impl FromWorld for HoleAssets {
+    fn from_world(world: &mut World) -> Self {
+        let mesh_handle = world.resource_mut::<Assets<Mesh>>().add(
+        Mesh::from(
+            shape::Plane {
+                size: 1.5//Vec2::new(1.0, 1.0),
+            }));
+
+        let tex_handle = world.resource::<AssetServer>().load("hole.png");
+        let final_tex_handle = world.resource::<AssetServer>().load("final_hole.png");
+
+        HoleAssets { mesh: mesh_handle, tex: tex_handle, final_tex: final_tex_handle }
+    }
+}
 
 #[derive(Bundle)]
 pub struct HoleBundle {
@@ -22,12 +47,14 @@ pub struct HolePlugin;
 impl Plugin for HolePlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system_to_stage(CoreStage::PostUpdate, hole_system);
+            .add_system_set(SystemSet::on_update(GameState::Running).with_system(hole_system))
+            .add_asset::<HoleAssets>()
+            .init_resource::<HoleAssets>();
     }
 }
 
 fn hole_system(
-    mut exit: EventWriter<AppExit>,
+    mut game_state: ResMut<State<GameState>>,
     mut ball_query: Query<(&mut Transform, &mut PhysicsObject, &BallComponent)>,
     mut hole_query: Query<(&mut Transform, &mut PhysicsObject, &HoleComponent, Without<BallComponent>)>,
 ) {
@@ -40,7 +67,8 @@ fn hole_system(
 
             {
                 let tr_a = ball.0.as_mut();
-                let po_a = ball.1.as_ref();
+                let po_a = ball.1.as_mut();
+                let _ball_component = ball.2;
                 let tr_b = other.0;
                 let po_b = other.1;
                 let hc = other.2;
@@ -52,11 +80,12 @@ fn hole_system(
                             // hole collision
                             if hc.is_final {
                                 // is a final hole
-                                exit.send(AppExit);
+                                game_state.set(GameState::Splash).unwrap();
 
                             } else {
                                 // is not a final
-                                tr_a.translation = Vec3::ZERO;
+                                reset_ball(&mut game_state);
+                                return;
                             }
 
                         }

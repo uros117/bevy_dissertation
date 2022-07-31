@@ -1,4 +1,8 @@
-use bevy::{prelude::*, input::mouse::MouseMotion, render::{camera::{Camera3d}}};
+use std::time::Duration;
+
+use bevy::{prelude::*, input::mouse::{MouseMotion, MouseWheel}, render::{camera::{Camera3d}}};
+
+use bevy_tweening::{*, lens::TransformScaleLens};
 
 mod skybox;
 mod obstacle;
@@ -6,33 +10,46 @@ mod physics;
 mod arena;
 mod ball;
 mod hole;
+mod ball_anim;
+mod splash;
 
 use physics::*;
 use arena::*;
 use ball::*;
 use obstacle::*;
 use hole::*;
+use ball_anim::*;
+use splash::*;
 
 fn main() {
-    println!("Hello, world!");
     App::new()
+        .add_state(GameState::RespawnGrow)
         .add_plugins(DefaultPlugins)
-        .add_plugins(bevy_mod_picking::DefaultPickingPlugins)
         .add_plugin(skybox::SkyboxPlugin)
         .add_plugin(ArenaPlugin)
         .add_plugin(BallPlugin)
         .add_plugin(ObstaclePlugin)
         .add_plugin(HolePlugin)
+        .add_plugin(TweeningPlugin)
+        .add_plugin(BallAnimPlugin)
+        .add_plugin(SplashPlugin)
         .insert_resource(Msaa {samples: 4})
         .add_startup_system(startup_system)
         .add_system(mouse_motion)
         .add_system(orbit_camera_startup)
         .add_system(camera_switch)
+        .add_system(move_top_down_camera)
+        .add_system(mouse_scroll)
         .run();
 }
 
-
-
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum GameState {
+    RespawnGrow,
+    Running,
+    RespawnShrink,
+    Splash,
+}
 
 #[derive(Component)]
 struct MovableCamera {
@@ -49,6 +66,19 @@ impl Default for MovableCamera {
     }
 }
 
+#[derive(Component)]
+struct TopDownCamera {
+    focus_distance: f32,
+}
+
+impl Default for TopDownCamera {
+    fn default() -> Self {
+        TopDownCamera {
+            focus_distance: 5.0,
+        }
+    }
+}
+
 // Accessing resources using Res/ResMut
 // Accessing components of entities using queries(Query)
 // Creating/destroying entities, components, and resources using Commands(Commands)
@@ -59,10 +89,42 @@ fn startup_system(
     _asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     arena_assets: Res<ArenaAssets>,
+    hole_assets: Res<HoleAssets>,
 ) {
+    println!("Settingup the stage!");
     
     let cube_material_handle = materials.add(StandardMaterial { 
-        base_color: Color::RED, 
+        //base_color: Color::RED, 
+        base_color_texture: Some(arena_assets.tex.clone()),
+        metallic: 0.0,
+        reflectance: 0.0,
+        perceptual_roughness: 1.0,
+        ..default()
+    });
+
+    let hole_material_handle = materials.add(StandardMaterial { 
+        //base_color: Color::RED, 
+        base_color_texture: Some(hole_assets.tex.clone()),
+        metallic: 0.0,
+        reflectance: 0.0,
+        perceptual_roughness: 1.0,
+        alpha_mode: AlphaMode::Mask(0.5),
+        ..default()
+    });
+
+    let final_hole_material_handle = materials.add(StandardMaterial { 
+        //base_color: Color::RED, 
+        base_color_texture: Some(hole_assets.final_tex.clone()),
+        metallic: 0.0,
+        reflectance: 0.0,
+        perceptual_roughness: 1.0,
+        alpha_mode: AlphaMode::Mask(0.5),
+        ..default()
+    });
+
+    let ball_material_handle = materials.add(StandardMaterial { 
+        base_color: Color::rgb_u8(200, 200, 200), 
+        metallic: 0.7,
         ..default()
     });
 
@@ -80,15 +142,6 @@ fn startup_system(
         min_z:-0.5,
     }));
 
-    // let hole_mesh_handle = meshes.add(Mesh::from(shape::Capsule {
-    //     radius: todo!(),
-    //     rings: todo!(),
-    //     depth: todo!(),
-    //     latitudes: todo!(),
-    //     longitudes: todo!(),
-    //     uv_profile: todo!(),
-    // }));
-
     // parent cube
     commands
         .spawn_bundle(ArenaBundle {
@@ -102,9 +155,26 @@ fn startup_system(
         })
         .with_children(|parent| {
             // child cube 
+            // BALL
+            let tween = Tween::new(
+                EaseFunction::QuadraticInOut,
+                TweeningType::Once,
+                Duration::from_secs(2),
+                TransformScaleLens {
+                    start: Vec3::new(1.0, 1.0, 1.0),
+                    end: Vec3::new(0.1, 0.1, 0.1),
+                },
+            )
+            .with_completed_event(true, 1);
+
+            let mut anim = Animator::new(tween);
+            anim.stop();
+
             parent.spawn_bundle(
                 BallBundle {
-                    ball_comp: BallComponent,
+                    ball_comp: BallComponent {
+                        start_pos: Transform::from_xyz(-5.0, 0.5, -5.0),
+                    },
                     po: PhysicsObject {
                         acc: Vec2::ZERO,
                         max_acc: Vec2::new(1.0, 1.0),
@@ -113,12 +183,135 @@ fn startup_system(
                     },
                     pbr: PbrBundle {
                         mesh: ball_handle,
-                        material: cube_material_handle.clone(),
-                        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+                        material: ball_material_handle.clone(),
+                        transform: Transform::from_xyz(-5.0, 0.5, -5.0),
+                        ..default()
+                    }
+                })
+                .insert(anim);
+            
+            // HOLES
+            parent.spawn_bundle(
+                HoleBundle {
+                    hole_comp: HoleComponent { is_final: true },
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::new(1.0, 1.0),
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::CircleColider(0.15)
+                    },
+                    pbr: PbrBundle {
+                        mesh: hole_assets.mesh.clone(),
+                        material: final_hole_material_handle.clone(),
+                        transform: Transform::from_xyz(5.0, 0.001, 5.0),
                         ..default()
                     }
                 });
-            
+
+            parent.spawn_bundle(
+                HoleBundle {
+                    hole_comp: HoleComponent { is_final: false },
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::new(1.0, 1.0),
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::CircleColider(0.15)
+                    },
+                    pbr: PbrBundle {
+                        mesh: hole_assets.mesh.clone(),
+                        material: hole_material_handle.clone(),
+                        transform: Transform::from_xyz(3.0, 0.001, -3.0),
+                        ..default()
+                    }
+                });
+
+            parent.spawn_bundle(
+                HoleBundle {
+                    hole_comp: HoleComponent { is_final: false },
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::new(1.0, 1.0),
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::CircleColider(0.15)
+                    },
+                    pbr: PbrBundle {
+                        mesh: hole_assets.mesh.clone(),
+                        material: hole_material_handle.clone(),
+                        transform: Transform::from_xyz(-3.5, 0.001, -2.8),
+                        ..default()
+                    }
+                });
+
+            parent.spawn_bundle(
+                HoleBundle {
+                    hole_comp: HoleComponent { is_final: false },
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::new(1.0, 1.0),
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::CircleColider(0.15)
+                    },
+                    pbr: PbrBundle {
+                        mesh: hole_assets.mesh.clone(),
+                        material: hole_material_handle.clone(),
+                        transform: Transform::from_xyz(-3.5, 0.001, -2.8),
+                        ..default()
+                    }
+                });
+
+
+            parent.spawn_bundle(
+                HoleBundle {
+                    hole_comp: HoleComponent { is_final: false },
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::new(1.0, 1.0),
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::CircleColider(0.15)
+                    },
+                    pbr: PbrBundle {
+                        mesh: hole_assets.mesh.clone(),
+                        material: hole_material_handle.clone(),
+                        transform: Transform::from_xyz(0.0, 0.001, 1.8),
+                        ..default()
+                    }
+                });
+
+
+            parent.spawn_bundle(
+                HoleBundle {
+                    hole_comp: HoleComponent { is_final: false },
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::new(1.0, 1.0),
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::CircleColider(0.15)
+                    },
+                    pbr: PbrBundle {
+                        mesh: hole_assets.mesh.clone(),
+                        material: hole_material_handle.clone(),
+                        transform: Transform::from_xyz(-1.5, 0.001, 3.8),
+                        ..default()
+                    }
+                });
+
+            parent.spawn_bundle(
+                HoleBundle {
+                    hole_comp: HoleComponent { is_final: false },
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::new(1.0, 1.0),
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::CircleColider(0.15)
+                    },
+                    pbr: PbrBundle {
+                        mesh: hole_assets.mesh.clone(),
+                        material: hole_material_handle.clone(),
+                        transform: Transform::from_xyz(2.6, 0.001, 4.2),
+                        ..default()
+                    }
+                });
+            // OBSTACLES
             parent.spawn_bundle(
                 ObstacleBundle {
                     obstacle_comp: ObstacleComponent,
@@ -126,13 +319,49 @@ fn startup_system(
                         acc: Vec2::ZERO,
                         max_acc: Vec2::ZERO,
                         speed: Vec2::ZERO,
-                        colider: physics::Colider::BoxColider(1.0, 2.0)
+                        colider: physics::Colider::BoxColider(0.4, 8.0)
                     },
                     pbr: PbrBundle {
                         mesh: box_handle.clone(),
                         material: cube_material_handle.clone(),
-                        transform: Transform::from_xyz(-2.0, 0.0, 0.0)
-                            .with_scale(Vec3::new(1.0, 1.0, 2.0)),
+                        transform: Transform::from_xyz(-5.8, 0.0, 0.0)
+                            .with_scale(Vec3::new(0.4, 1.0, 8.0)),
+                        ..default()
+                    }
+                });
+
+            parent.spawn_bundle(
+                ObstacleBundle {
+                    obstacle_comp: ObstacleComponent,
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::ZERO,
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::BoxColider(0.4, 1.5)
+                    },
+                    pbr: PbrBundle {
+                        mesh: box_handle.clone(),
+                        material: cube_material_handle.clone(),
+                        transform: Transform::from_xyz(-3.5, 0.0, -4.5)
+                            .with_scale(Vec3::new(0.4, 1.0, 1.5)),
+                        ..default()
+                    }
+                });
+
+            parent.spawn_bundle(
+                ObstacleBundle {
+                    obstacle_comp: ObstacleComponent,
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::ZERO,
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::BoxColider(0.4, 6.0)
+                    },
+                    pbr: PbrBundle {
+                        mesh: box_handle.clone(),
+                        material: cube_material_handle.clone(),
+                        transform: Transform::from_xyz(-3.5, 0.0, 2.5)
+                            .with_scale(Vec3::new(0.4, 1.0, 6.0)),
                         ..default()
                     }
                 });
@@ -154,11 +383,30 @@ fn startup_system(
                         ..default()
                     }
                 });
+
+            parent.spawn_bundle(
+                ObstacleBundle {
+                    obstacle_comp: ObstacleComponent,
+                    po: PhysicsObject {
+                        acc: Vec2::ZERO,
+                        max_acc: Vec2::ZERO,
+                        speed: Vec2::ZERO,
+                        colider: physics::Colider::BoxColider(4.0, 0.4)
+                    },
+                    pbr: PbrBundle {
+                        mesh: box_handle.clone(),
+                        material: cube_material_handle.clone(),
+                        transform: Transform::from_xyz(1.5, 0.0, 0.0)
+                            .with_scale(Vec3::new(4.0, 1.0, 0.4)),
+                        ..default()
+                    }
+                });
         });
     
     // light
     commands.spawn_bundle(PointLightBundle {
-        transform: Transform::from_xyz(4.0, 5.0, -4.0),
+        transform: Transform::from_xyz(3.0, 3.0, -3.0),
+        point_light: PointLight {shadows_enabled: true, ..default()},
         ..default()
     });
 
@@ -168,25 +416,20 @@ fn startup_system(
             transform: Transform { rotation: Quat::from_rotation_x(- std::f32::consts::PI / 4.0), ..default()},
             ..default()
         })
-        .insert_bundle(bevy_mod_picking::PickingCameraBundle::default())
         .insert(MovableCamera{
             ..default()
         });
     
     let mut ortho_camera = OrthographicCameraBundle::new_3d();
-    //ortho_camera.orthographic_projection
-    /*ortho_camera.transform = Transform {
-        translation: Vec3::new(0.0, 10.0, 0.0),
-        rotation: Quat::from_rotation_z(- std::f32::consts::PI),
-        ..default()
-    };*/
     
     ortho_camera.transform.rotate(Quat::from_rotation_x(- std::f32::consts::PI / 2.0));
     ortho_camera.orthographic_projection.scale = 4.0;
     ortho_camera.transform.translation += Vec3::new(0.0, 2.0, 0.0);
 
-    commands.spawn_bundle(ortho_camera);
+    commands.spawn_bundle(ortho_camera).insert(TopDownCamera { focus_distance: 2.0});
 
+    // UI camera
+    commands.spawn_bundle(UiCameraBundle::default());
 }
 
 // CAMERA SWITCH
@@ -197,10 +440,12 @@ fn camera_switch(
     ortho_camera_query: Query<(Entity, &OrthographicProjection, &Camera)>,
     persp_camera_query: Query<(Entity, &PerspectiveProjection, &Camera)>,
 ) {
-    if keyboard.just_pressed(KeyCode::Numpad2) {
-        active_cameras.set(ortho_camera_query.single().0);
-    } else if keyboard.just_pressed(KeyCode::Numpad1) {
-        active_cameras.set(persp_camera_query.single().0);
+    if keyboard.just_pressed(KeyCode::C) {
+        if active_cameras.get().unwrap() == persp_camera_query.single().0 {
+            active_cameras.set(ortho_camera_query.single().0);
+        } else {
+            active_cameras.set(persp_camera_query.single().0);
+        }
     }
 }
 
@@ -213,6 +458,18 @@ fn mouse_motion(
         for ev in motion_evr.iter() {
             //println!("Mouse moved: X: {} px, Y: {} px", ev.delta.x, ev.delta.y);
             move_orbit_camera(ev.delta, &mut query);
+        }
+    }
+}
+
+fn mouse_scroll(
+    mut mouse_evr: EventReader<MouseWheel>,
+    mut query: Query<(&mut Transform, &mut MovableCamera)>,
+) {
+
+    for ev in mouse_evr.iter() {
+        for (_cam_transform, mut cam_comp) in query.iter_mut() {
+            cam_comp.focus_distance += ev.y * 0.1;
         }
     }
 }
@@ -233,5 +490,17 @@ fn move_orbit_camera(
         camera.rotation = camera.rotation * Quat::from_rotation_x(delta.y * 0.001);
         camera.rotation = Quat::from_rotation_y(delta.x * 0.001) * camera.rotation;
         camera.translation = mc.focus + (-mc.focus_distance) * camera.forward();
+    }
+}
+
+fn move_top_down_camera(
+    ball_query: Query<(&GlobalTransform, &BallComponent)>,
+    mut query: Query<(&mut Transform, &mut TopDownCamera)>,
+) {
+    let (ball_trasform, _ball_comp) = ball_query.single();
+    for (mut camera, camera_comp) in query.iter_mut() {
+        camera.translation.x = ball_trasform.translation.x;
+        camera.translation.z = ball_trasform.translation.z;
+        camera.translation.y = camera_comp.focus_distance + ball_trasform.translation.y;
     }
 }
