@@ -15,6 +15,19 @@ pub struct PhysicsObject {
     pub colider: Colider,
 }
 
+impl Default for PhysicsObject {
+    fn default() -> Self {
+        Self { 
+            speed: Default::default(), 
+            acc: Default::default(), 
+            max_acc: Vec2::new(1.0, 1.0), 
+            colider: Colider::BoxColider(1.0, 1.0) 
+        }
+    }
+}
+
+
+
 
 // physics_update
 // fn physiscs_update(

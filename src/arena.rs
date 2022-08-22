@@ -1,4 +1,4 @@
-use bevy::{prelude::*, asset::Assets , reflect::TypeUuid};
+use bevy::{prelude::*, asset::Assets , reflect::TypeUuid, utils::Instant};
 
 use super::GameState;
 pub struct ArenaPlugin;
@@ -7,9 +7,10 @@ pub const ARENA_MAX_ANGLE: f32 = 3.14/6.0;
 pub const ARENA_ANG_MOMENTUM: f32 = 0.8;
 pub const ARENA_SIZE: f32 = 12.0;
 
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub struct ArenaBundle {
     pub rotator: Rotator,
+    pub return_anim: ReturnAnimation,
     #[bundle]
     pub pbr: PbrBundle,
 }
@@ -18,6 +19,7 @@ impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_system_set(SystemSet::on_update(GameState::Running).with_system(system))
+            .add_system_set(SystemSet::on_update(GameState::RespawnShrink).with_system(return_to_neutral))
             .add_asset::<ArenaAssets>()
             .init_resource::<ArenaAssets>();
     }
@@ -48,10 +50,17 @@ impl FromWorld for ArenaAssets {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Rotator {
     pub angle: Vec2,
 }
+
+#[derive(Component, Default)]
+pub struct ReturnAnimation {
+    start_time: Option<Instant>,
+    start: Vec2,
+}
+
 
 fn system(
     _commands: Commands,
@@ -76,6 +85,32 @@ fn system(
             (true, false)   => {-ARENA_ANG_MOMENTUM * time.delta_seconds()},
             (true, true)    => {0.0},
         }).clamp(-ARENA_MAX_ANGLE, ARENA_MAX_ANGLE);
+
+        tran.rotation = Quat::from_rotation_x(comp.angle.x) * Quat::from_rotation_z(comp.angle.y);
+    });
+}
+
+fn return_to_neutral(
+    _commands: Commands,
+    mut query: Query<(&mut Transform, &mut Rotator, &mut ReturnAnimation)>,
+) {
+    query.for_each_mut(|iter| {
+        let (mut tran, mut comp, mut anim) = iter;
+
+        if let None = anim.start_time {
+            anim.start_time = Some(Instant::now());
+            anim.start = comp.angle;
+        }
+
+        if let Some(start_instant) = anim.start_time {
+            let delta = Instant::now() - start_instant;
+            
+            comp.angle = (1.0 - delta.as_secs_f32()).clamp(0.0, 1.0) * anim.start;
+
+            if delta.as_secs_f32() >= 1.0 {
+                anim.start_time = None;
+            }
+        }
 
         tran.rotation = Quat::from_rotation_x(comp.angle.x) * Quat::from_rotation_z(comp.angle.y);
     });

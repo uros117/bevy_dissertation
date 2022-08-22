@@ -6,7 +6,7 @@ use super::GameState;
 use crate::physics::*;
 use crate::ball::*;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct HoleComponent {
     pub is_final: bool,
 } 
@@ -17,10 +17,17 @@ pub struct HoleAssets {
     pub mesh: Handle<Mesh>,
     pub tex: Handle<Image>,
     pub final_tex: Handle<Image>,
+    pub hole_material_handle: Handle<StandardMaterial>,
+    pub final_hole_material_handle: Handle<StandardMaterial>,
 }
 
 impl FromWorld for HoleAssets {
     fn from_world(world: &mut World) -> Self {
+
+        // world.resource_scope(|world, mut res:Mut<HoleAssets>| {
+
+        // });
+
         let mesh_handle = world.resource_mut::<Assets<Mesh>>().add(
         Mesh::from(
             shape::Plane {
@@ -30,7 +37,33 @@ impl FromWorld for HoleAssets {
         let tex_handle = world.resource::<AssetServer>().load("hole.png");
         let final_tex_handle = world.resource::<AssetServer>().load("final_hole.png");
 
-        HoleAssets { mesh: mesh_handle, tex: tex_handle, final_tex: final_tex_handle }
+        let hole_material_handle = world.resource_mut::<Assets<StandardMaterial>>().add(StandardMaterial { 
+            //base_color: Color::RED, 
+            base_color_texture: Some(tex_handle.clone()),
+            metallic: 0.0,
+            reflectance: 0.0,
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(0.5),
+            ..default()
+        });
+
+        let final_hole_material_handle = world.resource_mut::<Assets<StandardMaterial>>().add(StandardMaterial { 
+            //base_color: Color::RED, 
+            base_color_texture: Some(final_tex_handle.clone()),
+            metallic: 0.0,
+            reflectance: 0.0,
+            perceptual_roughness: 1.0,
+            alpha_mode: AlphaMode::Mask(0.5),
+            ..default()
+        });
+
+        HoleAssets { 
+            mesh: mesh_handle, 
+            tex: tex_handle, 
+            final_tex: final_tex_handle,
+            hole_material_handle: hole_material_handle,
+            final_hole_material_handle: final_hole_material_handle,
+        }
     }
 }
 
@@ -41,6 +74,47 @@ pub struct HoleBundle {
     #[bundle]
     pub pbr: PbrBundle,
 }
+
+impl Default for HoleBundle {
+    fn default() -> Self {
+        Self { 
+            hole_comp: Default::default(), 
+            po: 
+                PhysicsObject {
+                    colider: Colider::CircleColider(0.15),
+                    ..default()
+                }, 
+            pbr: Default::default() 
+        }
+    }
+}
+
+// Tried implementing new function to construct a new HoleBundle
+// FromWorld could have been used
+// Problem was that world is not accessable in normal system, only in exclusive ones
+//
+// impl HoleBundle {
+//     pub fn new(world: &World, transform: Transform, is_final: bool) -> Self {
+//         let hole_assets = world.get_resource::<HoleAssets>().unwrap();
+//         Self { 
+//             hole_comp: 
+//                 Default::default(), 
+//             po: 
+//                 PhysicsObject {
+//                     colider: Colider::CircleColider(0.15),
+//                     ..default()
+//                 }, 
+//             pbr: 
+//                 PbrBundle {
+//                     mesh: hole_assets.mesh.clone(),
+//                     material: if is_final { hole_assets.final_hole_material_handle.clone() } else { hole_assets.hole_material_handle.clone() },
+//                     transform: transform,
+//                     ..default()
+//                 }
+
+//         }
+//     }
+// }
 
 pub struct HolePlugin;
 
@@ -92,7 +166,6 @@ fn hole_system(
                     }
                 }
             }
-
         }
     }
 }
