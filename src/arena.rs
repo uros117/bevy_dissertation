@@ -20,7 +20,6 @@ impl Plugin for ArenaPlugin {
         app
             .add_system_set(SystemSet::on_update(GameState::Running).with_system(system))
             .add_system_set(SystemSet::on_update(GameState::RespawnShrink).with_system(return_to_neutral))
-            .add_asset::<ArenaAssets>()
             .init_resource::<ArenaAssets>();
     }
 }

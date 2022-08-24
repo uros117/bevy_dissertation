@@ -1,4 +1,7 @@
-use bevy::{prelude::*, input::mouse::{MouseMotion, MouseWheel}, render::{camera::{Camera3d}}, reflect::TypeUuid};
+use bevy::prelude::*;
+use bevy::input::mouse::{MouseMotion, MouseWheel};
+use bevy::reflect::TypeUuid;
+
 use crate::arena::*;
 use crate::hole::*;
 use crate::physics;
@@ -353,39 +356,55 @@ fn startup_system(
 
     // camera
     commands
-        .spawn_bundle(PerspectiveCameraBundle {
+        .spawn_bundle(Camera3dBundle {
             transform: Transform { rotation: Quat::from_rotation_x(- std::f32::consts::PI / 4.0), ..default()},
+            camera: Camera {
+                priority: 1,
+                ..default()
+            },
             ..default()
         })
         .insert(MovableCamera{
             ..default()
         });
     
-    let mut ortho_camera = OrthographicCameraBundle::new_3d();
-    
-    ortho_camera.transform.rotate(Quat::from_rotation_x(- std::f32::consts::PI / 2.0));
-    ortho_camera.orthographic_projection.scale = 4.0;
-    ortho_camera.transform.translation += Vec3::new(0.0, 2.0, 0.0);
 
-    commands.spawn_bundle(ortho_camera).insert(TopDownCamera { focus_distance: 2.0});
+    commands
+        .spawn_bundle(Camera3dBundle {
+            projection: OrthographicProjection {
+                scale: 4.0,
+                ..default()
+            }.into(),
+            transform: Transform { rotation: Quat::from_rotation_x(- std::f32::consts::PI / 2.0), translation: Vec3::new(0.0, 2.0, 0.0), ..default()},
+            camera: Camera {
+                is_active: false,
+                ..default()
+            },
+            ..default()
+        })
+        .insert(TopDownCamera { focus_distance: 2.0});
 
     // UI camera
-    commands.spawn_bundle(UiCameraBundle::default());
+    //commands.spawn_bundle(Camera2dBundle::default());
 }
 
 // CAMERA SWITCH
 fn camera_switch(
     _commands: Commands,
     keyboard: Res<Input<KeyCode>>,
-    mut active_cameras: ResMut<bevy::render::camera::ActiveCamera<Camera3d>>,
-    ortho_camera_query: Query<(Entity, &OrthographicProjection, &Camera, With<TopDownCamera>)>,
-    persp_camera_query: Query<(Entity, &PerspectiveProjection, &Camera)>,
+    //mut active_cameras: ResMut<bevy::render::camera::<Camera3d>>,
+    mut ortho_camera_query: Query<(Entity, &OrthographicProjection, &mut Camera, With<TopDownCamera>)>,
+    mut persp_camera_query: Query<(Entity, &PerspectiveProjection, &mut Camera, Without<TopDownCamera>)>,
 ) {
     if keyboard.just_pressed(KeyCode::C) {
-        if active_cameras.get().unwrap() == persp_camera_query.single().0 {
-            active_cameras.set(ortho_camera_query.single().0);
+        if persp_camera_query.single().2.is_active == true {
+            //active_cameras.set(ortho_camera_query.single().0);
+            ortho_camera_query.single_mut().2.is_active = true;
+            persp_camera_query.single_mut().2.is_active = false;
         } else {
-            active_cameras.set(persp_camera_query.single().0);
+            //active_cameras.set(persp_camera_query.single().0);
+            persp_camera_query.single_mut().2.is_active = true;
+            ortho_camera_query.single_mut().2.is_active = false;
         }
     }
 }
@@ -440,8 +459,8 @@ fn move_top_down_camera(
 ) {
     let (ball_trasform, _ball_comp) = ball_query.single();
     for (mut camera, camera_comp) in query.iter_mut() {
-        camera.translation.x = ball_trasform.translation.x;
-        camera.translation.z = ball_trasform.translation.z;
-        camera.translation.y = camera_comp.focus_distance + ball_trasform.translation.y;
+        camera.translation.x = ball_trasform.translation().x;
+        camera.translation.z = ball_trasform.translation().z;
+        camera.translation.y = camera_comp.focus_distance + ball_trasform.translation().y;
     }
 }

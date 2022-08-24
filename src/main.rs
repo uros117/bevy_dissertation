@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use bevy::prelude::*;
+use bevy::{prelude::*, asset};
 
 
 mod skybox;
@@ -40,7 +40,14 @@ fn main() {
         .add_plugin(SplashPlugin)
         .add_plugin(LevelPlugin)
         .insert_resource(Msaa {samples: 4})
+        .add_startup_system(asset_server_en_hotload)
         .run();
+}
+
+fn asset_server_en_hotload(
+    asset_server: Res<AssetServer>
+) {
+    asset_server.watch_for_changes().unwrap();
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

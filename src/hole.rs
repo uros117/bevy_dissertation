@@ -122,7 +122,6 @@ impl Plugin for HolePlugin {
     fn build(&self, app: &mut App) {
         app
             .add_system_set(SystemSet::on_update(GameState::Running).with_system(hole_system))
-            .add_asset::<HoleAssets>()
             .init_resource::<HoleAssets>();
     }
 }

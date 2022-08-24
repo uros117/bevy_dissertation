@@ -41,40 +41,32 @@ fn splash_enter(
     spash_a: Res<SplashAssets>,
 ) {
     commands.spawn_bundle(
-        TextBundle {
-            text: 
-                Text { 
-                    sections: 
-                        vec![
-                            TextSection {
-                                style: 
-                                    TextStyle { 
-                                        font: spash_a.font_handle.clone(),
-                                        font_size: 100.0,
-                                        ..default()
-                                    },
-                                value: String::from("YOU WIN!"),
-                            }], 
-                    alignment: 
-                        TextAlignment { vertical: VerticalAlign::Center, horizontal: HorizontalAlign::Center }
-                },
-            style:
-                Style {
-                    position_type: PositionType::Relative,
-                    margin: Rect {
-                        top: Val::Auto,
-                        left: Val::Auto,
-                        right: Val::Auto,
-                        bottom: Val::Auto,
-                    },
-                    align_self: AlignSelf::Center,
-                    align_content: AlignContent::Center,
-                    align_items: AlignItems::Center,
-            
-                    ..default()
-                },
-            ..default()
-        })
+        TextBundle::from_sections(
+            vec![
+                TextSection {
+                    style: 
+                        TextStyle { 
+                            font: spash_a.font_handle.clone(),
+                            font_size: 100.0,
+                            ..default()
+                        },
+                    value: String::from("YOU WIN!"),
+                }]).with_style(
+                    Style {
+                        position_type: PositionType::Relative,
+                        margin: UiRect {
+                            top: Val::Auto,
+                            left: Val::Auto,
+                            right: Val::Auto,
+                            bottom: Val::Auto,
+                        },
+                        align_self: AlignSelf::Center,
+                        align_content: AlignContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }
+                )
+            )
         .insert(
             SplashTextComponent {
                 timer: Timer::new(Duration::from_secs(3), false),

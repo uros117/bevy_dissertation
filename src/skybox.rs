@@ -1,4 +1,4 @@
-use bevy::{prelude::*, ecs::system::lifetimeless::SRes, render::{renderer::RenderDevice, render_resource::{BindGroupLayout, BindGroup, BindGroupDescriptor, BindGroupLayoutDescriptor, ShaderStages, TextureViewDimension, TextureSampleType, BindingType, BindGroupLayoutEntry, SamplerBindingType, BindGroupEntry}, render_asset::{RenderAsset, RenderAssets, PrepareAssetError}, mesh::Indices}, reflect::TypeUuid, pbr::MaterialPipeline};
+use bevy::{prelude::*, render::{ render_resource::{AsBindGroup, ShaderRef}, mesh::Indices}, reflect::TypeUuid};
 
 
 pub struct SkyboxPlugin;
@@ -12,19 +12,16 @@ impl Plugin for SkyboxPlugin {
 }
 
 
-#[derive(TypeUuid, Clone)]
+#[derive(AsBindGroup, TypeUuid, Clone)]
 #[uuid = "c7df202e-8e36-4a43-b195-e17bba95ed93"]
 pub struct SkyboxMaterial {
+    #[texture(0)]
+    #[sampler(1)]
     cubemap: Option<Handle<Image>>,
 }
 
 // Asset is implemented for any type that has a trait TypeUUID
 // so implementing TypeUUID is enogh
-
-pub struct SkyboxMaterialGPU {
-    bind_group: BindGroup,
-}
-
 
 fn startup_system(
     mut commands: Commands,
@@ -162,90 +159,11 @@ fn build_skybox_mesh() -> Mesh {
 impl Material for SkyboxMaterial {
     // the vertex and fragment shaders are optional
     // they use a default "mesh pipeline shader" if they are not defined
-    fn fragment_shader(asset_server: &AssetServer) -> Option<Handle<Shader>> {
-        asset_server.watch_for_changes().unwrap();
-        Some(asset_server.load("shaders/skybox_fragment.wgsl"))
+    fn fragment_shader() -> ShaderRef {
+        "shaders/skybox_fragment.wgsl".into()
     }
 
-    fn vertex_shader(asset_server: &AssetServer) -> Option<Handle<Shader>> {
-        asset_server.watch_for_changes().unwrap();
-        Some(asset_server.load("shaders/skybox_vertex.wgsl"))
-    }
-
-    fn bind_group(material: &<Self as RenderAsset>::PreparedAsset) -> &BindGroup {
-        // Bind groups are used to setup uniforms
-        // This function is called every frame
-        // and bind_group doesn't need to be created
-        // every frame
-        &material.bind_group
-    }
-
-    fn bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
-        render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: TextureViewDimension::D2,
-                        sample_type: TextureSampleType::Float { filterable: true },// filterable means that the image can be interpolated
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: None,// None because this is not an array
-                }
-            ],
-        })
-    }
-}
-
-// Transfer the material from the App world to the Render world(there 2 seperate ECS worlds in a project)
-// Extracted asset can be the same type as the render asset
-impl RenderAsset for SkyboxMaterial {
-    type ExtractedAsset = SkyboxMaterial;
-
-    type PreparedAsset = SkyboxMaterialGPU;
-
-    type Param = (SRes<RenderDevice>, SRes<MaterialPipeline<SkyboxMaterial>>, SRes<RenderAssets<Image>>);// There are no parameters needed at the time
-
-    fn extract_asset(&self) -> Self::ExtractedAsset {
-        self.clone()
-    }
-
-    fn prepare_asset(
-        extracted_asset: Self::ExtractedAsset,
-        (render_device, pipeline, gpu_images): &mut bevy::ecs::system::SystemParamItem<Self::Param>,
-    ) -> Result<Self::PreparedAsset, bevy::render::render_asset::PrepareAssetError<Self::ExtractedAsset>> {
-
-        let (base_color_texture_view, base_color_sampler) = 
-            if let Some(result) = pipeline.mesh_pipeline.get_image_texture(gpu_images, &extracted_asset.cubemap) {
-            result
-        } else {
-            return Err(PrepareAssetError::RetryNextUpdate(extracted_asset));
-        };
-
-        let bind_group = render_device.create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &pipeline.material_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: bevy::render::render_resource::BindingResource::TextureView(base_color_texture_view)
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: bevy::render::render_resource::BindingResource::Sampler(base_color_sampler)
-                }
-            ],
-        });
-        Ok(SkyboxMaterialGPU {
-            bind_group,
-        })
+    fn vertex_shader() -> ShaderRef {
+        "shaders/skybox_vertex.wgsl".into()
     }
 }
