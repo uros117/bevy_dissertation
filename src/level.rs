@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::reflect::TypeUuid;
+use bevy::render::camera::ScalingMode;
 
 use crate::arena::*;
 use crate::hole::*;
@@ -372,7 +373,8 @@ fn startup_system(
     commands
         .spawn_bundle(Camera3dBundle {
             projection: OrthographicProjection {
-                scale: 4.0,
+                //scale: 4.0,
+                scaling_mode: ScalingMode::FixedVertical(8.0),
                 ..default()
             }.into(),
             transform: Transform { rotation: Quat::from_rotation_x(- std::f32::consts::PI / 2.0), translation: Vec3::new(0.0, 2.0, 0.0), ..default()},
@@ -393,18 +395,18 @@ fn camera_switch(
     _commands: Commands,
     keyboard: Res<Input<KeyCode>>,
     //mut active_cameras: ResMut<bevy::render::camera::<Camera3d>>,
-    mut ortho_camera_query: Query<(Entity, &OrthographicProjection, &mut Camera, With<TopDownCamera>)>,
-    mut persp_camera_query: Query<(Entity, &PerspectiveProjection, &mut Camera, Without<TopDownCamera>)>,
+    mut ortho_camera_query: Query<(Entity, &mut Camera, With<TopDownCamera>)>,
+    mut persp_camera_query: Query<(Entity, &mut Camera, Without<TopDownCamera>)>,
 ) {
     if keyboard.just_pressed(KeyCode::C) {
-        if persp_camera_query.single().2.is_active == true {
+        if persp_camera_query.single().1.is_active == true {
             //active_cameras.set(ortho_camera_query.single().0);
-            ortho_camera_query.single_mut().2.is_active = true;
-            persp_camera_query.single_mut().2.is_active = false;
+            ortho_camera_query.single_mut().1.is_active = true;
+            persp_camera_query.single_mut().1.is_active = false;
         } else {
             //active_cameras.set(persp_camera_query.single().0);
-            persp_camera_query.single_mut().2.is_active = true;
-            ortho_camera_query.single_mut().2.is_active = false;
+            persp_camera_query.single_mut().1.is_active = true;
+            ortho_camera_query.single_mut().1.is_active = false;
         }
     }
 }
