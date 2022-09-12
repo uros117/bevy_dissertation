@@ -1,4 +1,4 @@
-use bevy::{prelude::*, asset::Assets , reflect::TypeUuid, utils::Instant};
+use bevy::{prelude::*, asset::Assets , utils::Instant};
 
 use super::GameState;
 pub struct ArenaPlugin;
@@ -20,18 +20,16 @@ impl Plugin for ArenaPlugin {
         app
             .add_system_set(SystemSet::on_update(GameState::Running).with_system(system))
             .add_system_set(SystemSet::on_update(GameState::RespawnShrink).with_system(return_to_neutral))
-            .init_resource::<ArenaAssets>();
+            .init_resource::<ArenaRes>();
     }
 }
 
-#[derive(TypeUuid)]
-#[uuid = "9e062dfb-8484-415c-86e0-28cd451874d8"]
-pub struct ArenaAssets {
+pub struct ArenaRes {
     pub mesh: Handle<Mesh>,
     pub tex: Handle<Image>,
 }
 
-impl FromWorld for ArenaAssets {
+impl FromWorld for ArenaRes {
     fn from_world(world: &mut World) -> Self {
         let arena_mesh_handle = world.resource_mut::<Assets<Mesh>>().add(
             Mesh::from(shape::Box {
@@ -45,7 +43,7 @@ impl FromWorld for ArenaAssets {
 
         let tex_handle = world.resource::<AssetServer>().load("wood.png");
         
-        ArenaAssets { mesh: arena_mesh_handle, tex: tex_handle }
+        ArenaRes { mesh: arena_mesh_handle, tex: tex_handle }
     }
 }
 

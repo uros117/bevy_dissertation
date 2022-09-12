@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::reflect::TypeUuid;
 
 use super::GameState;
 
@@ -11,9 +10,7 @@ pub struct HoleComponent {
     pub is_final: bool,
 } 
 
-#[derive(TypeUuid)]
-#[uuid = "ad0913f1-1770-45f2-ab88-cfbcb9ae67f5"]
-pub struct HoleAssets {
+pub struct HoleRes {
     pub mesh: Handle<Mesh>,
     pub tex: Handle<Image>,
     pub final_tex: Handle<Image>,
@@ -21,7 +18,7 @@ pub struct HoleAssets {
     pub final_hole_material_handle: Handle<StandardMaterial>,
 }
 
-impl FromWorld for HoleAssets {
+impl FromWorld for HoleRes {
     fn from_world(world: &mut World) -> Self {
 
         // world.resource_scope(|world, mut res:Mut<HoleAssets>| {
@@ -57,7 +54,7 @@ impl FromWorld for HoleAssets {
             ..default()
         });
 
-        HoleAssets { 
+        HoleRes { 
             mesh: mesh_handle, 
             tex: tex_handle, 
             final_tex: final_tex_handle,
@@ -122,7 +119,7 @@ impl Plugin for HolePlugin {
     fn build(&self, app: &mut App) {
         app
             .add_system_set(SystemSet::on_update(GameState::Running).with_system(hole_system))
-            .init_resource::<HoleAssets>();
+            .init_resource::<HoleRes>();
     }
 }
 

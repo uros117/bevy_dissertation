@@ -1,0 +1,42 @@
+Date : 2022-08-25 14:02:25
+Directory : c:\Users\u\Desktop\rust\dipl
+Total : 13 files,  1120 codes, 113 comments, 204 blanks, all 1437 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Rust     |         10 |      1,060 |        108 |        191 |      1,359 |
+| WGSL     |          2 |         54 |          4 |         11 |         69 |
+| TOML     |          1 |          6 |          1 |          2 |          9 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                             | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                |         13 |      1,120 |        113 |        204 |      1,437 |
+| assets                                                           |          2 |         54 |          4 |         11 |         69 |
+| assets\shaders                                                   |          2 |         54 |          4 |         11 |         69 |
+| src                                                              |         10 |      1,060 |        108 |        191 |      1,359 |
++------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                         | language | code       | comment    | blank      | total      |
++------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\u\Desktop\rust\dipl\Cargo.toml                          | TOML     |          6 |          1 |          2 |          9 |
+| c:\Users\u\Desktop\rust\dipl\assets\shaders\skybox_fragment.wgsl | WGSL     |         15 |          0 |          3 |         18 |
+| c:\Users\u\Desktop\rust\dipl\assets\shaders\skybox_vertex.wgsl   | WGSL     |         39 |          4 |          8 |         51 |
+| c:\Users\u\Desktop\rust\dipl\src\arena.rs                        | Rust     |         94 |          0 |         24 |        118 |
+| c:\Users\u\Desktop\rust\dipl\src\ball.rs                         | Rust     |         50 |          2 |         13 |         65 |
+| c:\Users\u\Desktop\rust\dipl\src\ball_anim.rs                    | Rust     |         72 |          0 |         18 |         90 |
+| c:\Users\u\Desktop\rust\dipl\src\hole.rs                         | Rust     |        113 |         35 |         22 |        170 |
+| c:\Users\u\Desktop\rust\dipl\src\level.rs                        | Rust     |        406 |         22 |         40 |        468 |
+| c:\Users\u\Desktop\rust\dipl\src\main.rs                         | Rust     |         53 |          0 |          7 |         60 |
+| c:\Users\u\Desktop\rust\dipl\src\obstacle.rs                     | Rust     |         56 |          9 |         11 |         76 |
+| c:\Users\u\Desktop\rust\dipl\src\physics.rs                      | Rust     |         23 |         22 |          8 |         53 |
+| c:\Users\u\Desktop\rust\dipl\src\skybox.rs                       | Rust     |        114 |         18 |         37 |        169 |
+| c:\Users\u\Desktop\rust\dipl\src\splash.rs                       | Rust     |         79 |          0 |         11 |         90 |
+| Total                                                            |          |      1,120 |        113 |        204 |      1,437 |
++------------------------------------------------------------------+----------+------------+------------+------------+------------+

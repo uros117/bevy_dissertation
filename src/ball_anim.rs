@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::reflect::TypeUuid;
 use bevy::utils::Instant;
 
 use crate::ball::BallComponent;
@@ -10,8 +9,6 @@ use super::GameState;
 
 pub struct BallAnimPlugin;
 
-#[derive(TypeUuid)]
-#[uuid = "e9f2b0f8-4881-45ae-ad53-f48ec75362fd"]
 pub struct BallAnimatorAssets {
     start_time: Option<Instant>,
 }
@@ -26,7 +23,6 @@ impl FromWorld for BallAnimatorAssets {
 impl Plugin for BallAnimPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_asset::<BallAnimatorAssets>()
             .init_resource::<BallAnimatorAssets>()
             .add_system_set(SystemSet::on_enter(GameState::RespawnGrow).with_system(ball_anim_grow_enter))
             .add_system_set(SystemSet::on_update(GameState::RespawnGrow).with_system(ball_anim_grow_update))

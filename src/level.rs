@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
-use bevy::reflect::TypeUuid;
 use bevy::render::camera::ScalingMode;
 
 use crate::arena::*;
@@ -22,12 +21,6 @@ impl Plugin for LevelPlugin {
             .add_system(move_top_down_camera)
             .add_system(mouse_scroll);
     }
-}
-
-#[derive(TypeUuid)]
-#[uuid = "c2abe034-8f91-40fc-ae5f-b1f49e84078c"]
-pub struct LevelAssets {
-
 }
 
 #[derive(Component)]
@@ -67,8 +60,8 @@ fn startup_system(
     mut meshes: ResMut<Assets<Mesh>>,
     _asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    arena_assets: Res<ArenaAssets>,
-    hole_assets: Res<HoleAssets>,
+    arena_assets: Res<ArenaRes>,
+    hole_assets: Res<HoleRes>,
 ) {
     let cube_material_handle = materials.add(StandardMaterial { 
         //base_color: Color::RED, 

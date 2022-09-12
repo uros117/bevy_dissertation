@@ -1,0 +1,15 @@
+"filename", "language", "Rust", "WGSL", "TOML", "comment", "blank", "total"
+"c:\Users\u\Desktop\rust\dipl\Cargo.toml", "TOML", 0, 0, 6, 1, 2, 9
+"c:\Users\u\Desktop\rust\dipl\assets\shaders\skybox_fragment.wgsl", "WGSL", 0, 15, 0, 0, 3, 18
+"c:\Users\u\Desktop\rust\dipl\assets\shaders\skybox_vertex.wgsl", "WGSL", 0, 39, 0, 4, 8, 51
+"c:\Users\u\Desktop\rust\dipl\src\arena.rs", "Rust", 94, 0, 0, 0, 24, 118
+"c:\Users\u\Desktop\rust\dipl\src\ball.rs", "Rust", 50, 0, 0, 2, 13, 65
+"c:\Users\u\Desktop\rust\dipl\src\ball_anim.rs", "Rust", 72, 0, 0, 0, 18, 90
+"c:\Users\u\Desktop\rust\dipl\src\hole.rs", "Rust", 113, 0, 0, 35, 22, 170
+"c:\Users\u\Desktop\rust\dipl\src\level.rs", "Rust", 406, 0, 0, 22, 40, 468
+"c:\Users\u\Desktop\rust\dipl\src\main.rs", "Rust", 53, 0, 0, 0, 7, 60
+"c:\Users\u\Desktop\rust\dipl\src\obstacle.rs", "Rust", 56, 0, 0, 9, 11, 76
+"c:\Users\u\Desktop\rust\dipl\src\physics.rs", "Rust", 23, 0, 0, 22, 8, 53
+"c:\Users\u\Desktop\rust\dipl\src\skybox.rs", "Rust", 114, 0, 0, 18, 37, 169
+"c:\Users\u\Desktop\rust\dipl\src\splash.rs", "Rust", 79, 0, 0, 0, 11, 90
+"Total", "-", 1060, 54, 6, 113, 204, 1437
